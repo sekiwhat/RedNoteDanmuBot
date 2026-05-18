@@ -75,7 +75,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'status', state: 'disconnected', sentCount: 0 }));
 
   // ── Handle incoming messages ──
-  ws.on('message', (data) => {
+  ws.on('message', async (data) => {
     let parsed;
     try {
       parsed = JSON.parse(data.toString());
