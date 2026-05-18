@@ -81,7 +81,7 @@ class DanmuBot {
         if (template) {
           message = applyTemplate(template, prefix, randomStr);
         } else {
-          message = prefix + randomStr;
+          message = prefix + ' ' + randomStr;
         }
 
         await this._sendMessage(message);
@@ -99,8 +99,9 @@ class DanmuBot {
         this._log('error', `Error sending message: ${err.message}`);
       }
 
-      // Wait with jitter: interval + random jitter, floored at minInterval
-      let waitTime = interval + Math.random() * interval * config.jitterRatio;
+      // Wait with bidirectional jitter: interval ±30%, floored at minInterval
+      const jitter = (Math.random() * 2 - 1) * interval * config.jitterRatio;
+      let waitTime = interval + jitter;
       if (waitTime < config.minInterval) {
         waitTime = config.minInterval;
       }
