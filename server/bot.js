@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 import { generate, applyTemplate } from './randomizer.js';
 import { buildMessage } from './messageEngine.js';
 import config from './config.js';
@@ -16,17 +16,40 @@ class DanmuBot {
     this.onCount = null;
   }
 
-  async connect(url) {
-    // 使用持久化用户数据目录，登录态会自动保存，下次免扫码
-    this.context = await chromium.launchPersistentContext(config.userDataDir, {
+  async connect(url, browserType) {
+    browserType = browserType || config.browser;
+
+    const launchOptions = {
       headless: config.headless,
-      channel: 'chrome',
       viewport: { width: 1280, height: 720 },
-    });
+    };
+
+    switch (browserType) {
+      case 'edge':
+        launchOptions.channel = 'msedge';
+        this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
+      case 'safari':
+        this.context = await webkit.launchPersistentContext(config.userDataDir, {
+          ...launchOptions,
+          // Safari WebKit 使用 Playwright 自带的 WebKit 构建
+        });
+        break;
+      case 'chromium':
+        // Playwright 自带的 Chromium（不需要系统安装）
+        this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
+      default:
+        // 'chrome' — 使用系统安装的 Chrome
+        launchOptions.channel = 'chrome';
+        this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
+    }
+
     const pages = this.context.pages();
     this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
     await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    this._log('info', `浏览器已打开，请在浏览器窗口中登录小红书`);
+    this._log('info', `[${browserType}] 浏览器已打开，请在浏览器窗口中登录小红书`);
   }
 
   async disconnect() {

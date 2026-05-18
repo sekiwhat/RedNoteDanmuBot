@@ -12,4 +12,7 @@ export default {
 
   // 浏览器用户数据目录（用于持久化登录态，避免重复扫码）
   userDataDir: '.chromium-profile',
+
+  // 浏览器类型: 'chrome' | 'edge' | 'chromium' | 'firefox'
+  browser: 'chrome',
 };

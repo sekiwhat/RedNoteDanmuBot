@@ -92,7 +92,7 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({ type: 'error', message: 'Missing url in connect message' }));
             return;
           }
-          bot.connect(url)
+          bot.connect(url, parsed.browser)
             .then(() => {
               ws.send(JSON.stringify({ type: 'status', state: 'connected', sentCount: bot.sentCount }));
             })

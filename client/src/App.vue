@@ -5,6 +5,7 @@ import AnalyticsPanel from './components/AnalyticsPanel.vue';
 
 // ─── State ──────────────────────────────────────────────────────────────────────
 const url = ref('');
+const browser = ref('chrome');
 const prefix = ref('76');
 const interval = ref(2500);
 const activeTab = ref('control');
@@ -89,7 +90,7 @@ function send(cmd) {
 function connect() {
   if (!url.value.trim()) return;
   errorMsg.value = '';
-  send({ type: 'connect', url: url.value.trim() });
+  send({ type: 'connect', url: url.value.trim(), browser: browser.value });
 }
 function disconnect() {
   errorMsg.value = '';
@@ -155,15 +156,24 @@ function fmtTime(iso) {
               <span>{{ statusLabel }}</span>
             </div>
             <div class="status-url">{{ url || '未指定直播间' }}</div>
-            <div style="margin-top:10px;">
+            <div style="margin-top:10px;display:flex;gap:6px;">
               <input
                 class="input-field"
-                style="width:100%;text-align:left;border:0.5px solid var(--separator);border-radius:6px;padding:8px 10px;"
+                style="flex:1;text-align:left;border:0.5px solid var(--separator);border-radius:6px;padding:8px 10px;"
                 v-model="url"
                 placeholder="https://www.xiaohongshu.com/..."
                 :disabled="!canConnect"
                 @keyup.enter="connect"
               />
+              <select
+                v-model="browser"
+                class="browser-select"
+                :disabled="!canConnect"
+              >
+                <option value="chrome">Chrome</option>
+                <option value="edge">Edge</option>
+                <option value="safari">Safari</option>
+              </select>
             </div>
             <div class="btn-row" style="margin-top:8px;">
               <button class="btn btn-primary btn-half" :disabled="!canConnect || !url.trim()" @click="connect">连接</button>
