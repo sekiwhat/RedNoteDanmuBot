@@ -9,4 +9,7 @@ export default {
   headless: false,
   retryCount: 1,
   maxConsecutiveErrors: 3,
+
+  // 浏览器用户数据目录（用于持久化登录态，避免重复扫码）
+  userDataDir: '.chromium-profile',
 };

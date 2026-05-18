@@ -162,10 +162,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section>
-    <div class="section-header">
-      <label>数据看板</label>
-    </div>
+  <div class="card">
+    <div class="card-header">📊 数据看板</div>
+    <div class="card-body">
 
     <!-- Stats Grid -->
     <div class="stats-grid">
@@ -189,26 +188,21 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Line Chart: Real-time send rate -->
-    <div class="card-group" style="margin-top:16px;">
-      <div class="card-item" style="flex-direction:column; align-items:stretch; padding:16px;">
-        <div class="chart-title">实时发送速率</div>
-        <div class="chart-wrapper">
-          <canvas ref="lineCanvas"></canvas>
-        </div>
+    <!-- Chart section -->
+    <div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;">📈 实时发送速率</div>
+      <div class="chart-wrapper">
+        <canvas ref="lineCanvas"></canvas>
       </div>
     </div>
 
-    <!-- Bar Chart: Daily history -->
-    <div class="card-group" style="margin-top:16px;">
-      <div class="card-item" style="flex-direction:column; align-items:stretch; padding:16px;">
-        <div class="chart-title">近 7 日发送量</div>
-        <div class="chart-wrapper">
-          <canvas ref="barCanvas"></canvas>
-        </div>
+    <div style="margin-top:18px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;">📊 近 7 日发送量</div>
+      <div class="chart-wrapper">
+        <canvas ref="barCanvas"></canvas>
       </div>
     </div>
-  </section>
+  </div></div>
 </template>
 
 <style scoped>
