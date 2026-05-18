@@ -135,6 +135,40 @@ wss.on('connection', (ws) => {
           break;
         }
 
+        case 'listKeywords': {
+          const { listKeywords } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'keywords', list: listKeywords() }));
+          break;
+        }
+
+        case 'addKeyword': {
+          const { addKeyword } = await import('./database.js');
+          if (!parsed.text || !parsed.text.trim()) {
+            ws.send(JSON.stringify({ type: 'error', message: '关键词不能为空' }));
+            return;
+          }
+          ws.send(JSON.stringify({ type: 'keywords', list: addKeyword(parsed.text) }));
+          break;
+        }
+
+        case 'removeKeyword': {
+          const { removeKeyword } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'keywords', list: removeKeyword(parsed.id) }));
+          break;
+        }
+
+        case 'toggleKeyword': {
+          const { toggleKeyword } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'keywords', list: toggleKeyword(parsed.id) }));
+          break;
+        }
+
+        case 'getStats': {
+          const { getStats } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'stats', ...getStats() }));
+          break;
+        }
+
         case 'getStatus': {
           let state = 'disconnected';
           if (bot.page) state = 'connected';
