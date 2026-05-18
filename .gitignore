@@ -5,3 +5,9 @@ dist/
 
 # Internal development docs
 docs/
+
+# Playwright persistent profile (login session cache)
+.chromium-profile/
+
+# SQLite runtime database
+data/
