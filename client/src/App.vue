@@ -1,268 +1,281 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import KeywordManager from './components/KeywordManager.vue';
+import AnalyticsPanel from './components/AnalyticsPanel.vue';
 
-// ─── Reactive state ──────────────────────────────────────────────────
+// ─── State ──────────────────────────────────────────────────────────────────────
 const url = ref('');
 const prefix = ref('76');
 const interval = ref(2500);
-const randomMinLen = ref(3);
-const randomMaxLen = ref(6);
-const useLetters = ref(true);
-const useSymbols = ref(true);
-const useEmojis = ref(true);
-const status = ref('disconnected');   // disconnected | connected | running | idle
+const activeTab = ref('control');
+const kwManagerRef = ref(null);
+const analyticsRef = ref(null);
+const status = ref('disconnected');
 const sentCount = ref(0);
 const logs = ref([]);
 const logContainer = ref(null);
+const countBump = ref(false);
+const errorMsg = ref('');
 
-// ─── WebSocket ───────────────────────────────────────────────────────
+// ─── WebSocket ───────────────────────────────────────────────────────────────────
 let ws = null;
 let reconnectTimer = null;
-let reconnectAttempts = 0;
 
 const wsUrl = computed(() => {
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${location.host}`;
+  const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${p}//${location.host}`;
 });
 
-const statusLabel = computed(() => {
-  const map = {
-    disconnected: '未连接',
-    connected: '已连接',
-    running: '发送中',
-    idle: '空闲',
-  };
-  return map[status.value] || status.value;
-});
+const statusLabel = computed(() => ({
+  disconnected: '未连接',
+  connected: '已连接',
+  running: '发送中…',
+  idle: '已连接',
+}[status.value] || status.value));
 
 function connectWS() {
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-    return;
-  }
-
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   ws = new WebSocket(wsUrl.value);
-
-  ws.onopen = () => {
-    reconnectAttempts = 0;
-    // Request current status from server
-    ws.send(JSON.stringify({ type: 'getStatus' }));
-  };
-
-  ws.onmessage = (event) => {
-    let data;
-    try {
-      data = JSON.parse(event.data);
-    } catch {
-      return;
-    }
-
-    switch (data.type) {
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'getStatus' }));
+  ws.onmessage = (e) => {
+    let d;
+    try { d = JSON.parse(e.data); } catch { return; }
+    switch (d.type) {
       case 'status':
-        status.value = data.state;
-        if (data.sentCount !== undefined) {
-          sentCount.value = data.sentCount;
-        }
+        status.value = d.state;
+        errorMsg.value = '';
+        if (d.sentCount !== undefined) sentCount.value = d.sentCount;
         break;
-
       case 'count':
-        sentCount.value = data.sent;
+        sentCount.value = d.sent;
+        countBump.value = true;
+        setTimeout(() => countBump.value = false, 150);
         break;
-
+      case 'keywords':
+        if (kwManagerRef.value?.setKeywords) kwManagerRef.value.setKeywords(d.list);
+        break;
+      case 'stats':
+        if (analyticsRef.value?.setStats) analyticsRef.value.setStats(d);
+        break;
       case 'log':
-        logs.value.push({
-          level: data.level,
-          message: data.message,
-          time: data.time || new Date().toISOString(),
-        });
-        trimLogs();
-        scrollLogs();
-        break;
-
       case 'error':
         logs.value.push({
-          level: 'error',
-          message: data.message,
-          time: new Date().toISOString(),
+          level: d.type === 'error' ? 'error' : (d.level || 'info'),
+          message: d.message,
+          time: d.time || new Date().toISOString(),
         });
-        trimLogs();
-        scrollLogs();
+        if (d.type === 'error') errorMsg.value = d.message;
+        if (logs.value.length > 200) logs.value = logs.value.slice(-200);
+        nextTick(scrollLogs);
         break;
     }
   };
-
   ws.onclose = () => {
     status.value = 'disconnected';
-    // Auto-reconnect after 3 seconds
-    reconnectTimer = setTimeout(() => {
-      connectWS();
-    }, 3000);
+    reconnectTimer = setTimeout(connectWS, 3000);
   };
-
-  ws.onerror = () => {
-    // onclose will fire right after, so we just let that handle reconnection
-  };
-}
-
-function trimLogs() {
-  if (logs.value.length > 200) {
-    logs.value = logs.value.slice(logs.value.length - 200);
-  }
 }
 
 function scrollLogs() {
-  nextTick(() => {
-    const el = logContainer.value;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  });
+  const el = logContainer.value;
+  if (el) el.scrollTop = el.scrollHeight;
 }
 
-function sendCommand(cmd) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(cmd));
-  }
+function send(cmd) {
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(cmd));
 }
 
-// ─── Actions ─────────────────────────────────────────────────────────
+// ─── Actions ─────────────────────────────────────────────────────────────────────
 function connect() {
   if (!url.value.trim()) return;
-  sendCommand({ type: 'connect', url: url.value.trim() });
+  errorMsg.value = '';
+  send({ type: 'connect', url: url.value.trim() });
 }
-
 function disconnect() {
-  sendCommand({ type: 'disconnect' });
+  errorMsg.value = '';
+  send({ type: 'disconnect' });
 }
-
 function start() {
-  sendCommand({
-    type: 'start',
-    prefix: prefix.value,
-    options: {
-      interval: interval.value,
-      random: {
-        minLen: randomMinLen.value,
-        maxLen: randomMaxLen.value,
-        useLetters: useLetters.value,
-        useSymbols: useSymbols.value,
-        useEmojis: useEmojis.value,
-      },
-    },
-  });
+  errorMsg.value = '';
+  send({ type: 'start', prefix: prefix.value, options: { interval: interval.value } });
 }
+function stop() { send({ type: 'stop' }); }
 
-function stop() {
-  sendCommand({ type: 'stop' });
-}
-
-// ─── Button state helpers ───────────────────────────────────────────
+// ─── Button states ───────────────────────────────────────────────────────────────
 const canConnect = computed(() => status.value === 'disconnected');
-const canDisconnect = computed(() => status.value === 'connected' || status.value === 'idle');
-const canStart = computed(() => status.value === 'connected' || status.value === 'idle');
+const canDisconnect = computed(() => ['connected', 'idle'].includes(status.value));
+const canStart = computed(() => ['connected', 'idle'].includes(status.value));
 const canStop = computed(() => status.value === 'running');
 
-// ─── Lifecycle ───────────────────────────────────────────────────────
-onMounted(() => {
-  connectWS();
-});
-
+// ─── Lifecycle ───────────────────────────────────────────────────────────────────
+onMounted(connectWS);
 onUnmounted(() => {
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  if (ws) {
-    ws.onclose = null; // prevent reconnect when manually leaving
-    ws.close();
-    ws = null;
-  }
+  clearTimeout(reconnectTimer);
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
 });
 
-// ─── Time formatting helper ─────────────────────────────────────────
-function formatTime(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('zh-CN', { hour12: false });
-  } catch {
-    return '--:--:--';
-  }
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleTimeString('zh-CN', { hour12: false }); }
+  catch { return '--:--:--'; }
 }
 </script>
 
 <template>
   <!-- Header -->
-  <header class="header">
-    <h1>🕊️ RedNoteDanmuBot</h1>
-    <p>小红书弹幕机器人控制面板</p>
+  <header class="app-header">
+    <h1>RedNoteDanmuBot</h1>
+    <div class="subtitle">小红书弹幕控制面板</div>
   </header>
 
-  <!-- Connection card -->
-  <section class="card">
-    <div class="card-title">🔗 连接</div>
-    <div class="status-row">
-      <span class="status-dot" :class="status"></span>
-      <span class="status-label" :class="status">{{ statusLabel }}</span>
-    </div>
-    <div class="input-group">
-      <label for="url">目标 URL</label>
-      <input
-        id="url"
-        v-model="url"
-        type="text"
-        placeholder="https://www.xiaohongshu.com/..."
-        :disabled="!canConnect"
-      />
-    </div>
-    <div class="btn-group">
-      <button class="btn btn-primary" :disabled="!canConnect || !url.trim()" @click="connect">连接</button>
-      <button class="btn btn-secondary" :disabled="!canDisconnect" @click="disconnect">断开</button>
-    </div>
-  </section>
+  <!-- ─── Tab Bar ─── -->
+  <div class="tab-bar">
+    <button class="tab-btn" :class="{ active: activeTab === 'control' }" @click="activeTab = 'control'">🎮 控制</button>
+    <button class="tab-btn" :class="{ active: activeTab === 'keywords' }" @click="activeTab = 'keywords'">📝 关键词</button>
+    <button class="tab-btn" :class="{ active: activeTab === 'analytics' }" @click="activeTab = 'analytics'">📊 数据</button>
+  </div>
 
-  <!-- Message settings card -->
-  <section class="card">
-    <div class="card-title">⚙️ 消息设置</div>
-    <div class="input-group">
-      <label for="prefix">前缀</label>
-      <input id="prefix" v-model="prefix" type="text" placeholder="76" />
-    </div>
-    <div class="input-group">
-      <label for="interval">间隔 (ms)</label>
-      <input id="interval" v-model.number="interval" type="number" min="1500" max="8000" step="100" />
-    </div>
-    <div class="input-group">
-      <label for="randomMinLen">随机长度</label>
-      <input id="randomMinLen" v-model.number="randomMinLen" type="number" min="1" max="20" />
-      <span style="color: var(--text-dim); font-size:0.85rem; display:flex; align-items:center;">~</span>
-      <input v-model.number="randomMaxLen" type="number" min="1" max="20" />
-    </div>
-    <div class="checkbox-row">
-      <label><input type="checkbox" v-model="useLetters" /> 字母</label>
-      <label><input type="checkbox" v-model="useSymbols" /> 符号</label>
-      <label><input type="checkbox" v-model="useEmojis" /> 表情</label>
-    </div>
-  </section>
+  <!-- ─── Control Tab ─── -->
+  <div v-show="activeTab === 'control'">
 
-  <!-- Control card -->
-  <section class="card">
-    <div class="card-title">🎮 控制</div>
-    <div class="count-display">
-      <div class="count-number">{{ sentCount }}</div>
-      <div class="count-label">已发送消息数</div>
-    </div>
-    <div class="btn-group" style="justify-content: center;">
-      <button class="btn btn-success" :disabled="!canStart" @click="start">▶ 开始发送</button>
-      <button class="btn btn-danger" :disabled="!canStop" @click="stop">■ 停止</button>
-    </div>
-  </section>
+  <!-- ─── Connection ─── -->
+  <section>
+    <div class="section-header"><label>连接</label></div>
+    <div class="card-group">
+      <!-- Status row -->
+      <div class="card-item" style="padding:14px 16px;">
+        <div class="status-badge">
+          <span class="status-dot" :class="status"></span>
+          <span>{{ statusLabel }}</span>
+        </div>
+        <span class="item-value" style="font-size:13px;color:var(--text-tertiary);">
+          {{ url || '未指定直播间' }}
+        </span>
+      </div>
 
-  <!-- Log card -->
-  <section class="card">
-    <div class="card-title">📋 日志</div>
-    <div class="log-area" ref="logContainer">
-      <div v-if="logs.length === 0" class="log-empty">暂无日志</div>
-      <div v-for="(entry, idx) in logs" :key="idx" class="log-entry">
-        <span class="log-time">{{ formatTime(entry.time) }}</span>
-        <span class="log-level" :class="'log-level-' + entry.level">[{{ entry.level.toUpperCase() }}]</span>
-        <span class="log-message"> {{ entry.message }}</span>
+      <!-- URL input -->
+      <div class="card-item" style="min-height:44px;">
+        <label class="item-label-sm">URL</label>
+        <input
+          class="ios-input"
+          v-model="url"
+          placeholder="https://www.xiaohongshu.com/..."
+          :disabled="!canConnect"
+          @keyup.enter="connect"
+        />
+      </div>
+
+      <!-- Buttons -->
+      <div class="card-item" style="padding:10px 16px 14px; gap:10px;">
+        <button
+          class="ios-btn ios-btn-primary fill"
+          :disabled="!canConnect || !url.trim()"
+          @click="connect"
+        >连接</button>
+        <button
+          class="ios-btn ios-btn-secondary fill"
+          :disabled="!canDisconnect"
+          @click="disconnect"
+        >断开</button>
+      </div>
+
+      <!-- Error banner -->
+      <div v-if="errorMsg && status === 'disconnected'" class="card-item" style="padding:8px 16px 12px;">
+        <div class="error-banner">
+          <span>⚠</span>
+          <span>{{ errorMsg }}</span>
+        </div>
       </div>
     </div>
   </section>
+
+  <!-- ─── Message ─── -->
+  <section>
+    <div class="section-header"><label>消息</label></div>
+    <div class="card-group">
+      <!-- Prefix -->
+      <div class="card-item" style="min-height:44px;">
+        <label class="item-label">前缀</label>
+        <input class="ios-input" v-model="prefix" placeholder="76" style="max-width:120px;" />
+        <span class="item-value" style="flex:none;font-size:13px;">+ 关键词+符号</span>
+      </div>
+
+      <!-- Interval -->
+      <div class="card-item" style="min-height:44px;">
+        <label class="item-label">间隔</label>
+        <input class="ios-input number" v-model.number="interval" type="number" min="1500" max="8000" step="100" />
+        <span class="item-value" style="flex:none;">毫秒</span>
+      </div>
+
+
+
+
+    </div>
+  </section>
+
+  <!-- ─── Control ─── -->
+  <section>
+    <div class="section-header"><label>控制</label></div>
+    <div class="card-group">
+      <!-- Count -->
+      <div class="card-item" style="flex-direction:column; padding:20px 16px 12px;">
+        <div class="count-display">
+          <div class="count-number" :class="{ bump: countBump }">{{ sentCount }}</div>
+          <div class="count-label">已发送</div>
+        </div>
+      </div>
+
+      <!-- Start / Stop -->
+      <div class="card-item" style="padding:8px 16px 16px; gap:10px;">
+        <button
+          class="ios-btn ios-btn-success fill"
+          style="height:48px;"
+          :disabled="!canStart"
+          @click="start"
+        >▶ 开始</button>
+        <button
+          class="ios-btn ios-btn-danger fill"
+          style="height:48px;"
+          :disabled="!canStop"
+          @click="stop"
+        >■ 停止</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Log ─── -->
+  <section>
+    <div class="section-header"><label>日志</label></div>
+    <div class="card-group">
+      <div class="card-item" style="padding:6px; background:transparent; border:none;">
+        <div class="log-area" ref="logContainer">
+          <!-- Empty state -->
+          <div v-if="logs.length === 0" class="log-empty">
+            ── 暂无日志 ──<br>
+            <span style="font-size:11px;color:#636366;">连接直播间并开始发送后将显示在此</span>
+          </div>
+          <!-- Log entries -->
+          <div v-for="(entry, i) in logs" :key="i" class="log-entry" :class="'log-level-' + entry.level">
+            <span class="log-time">{{ fmtTime(entry.time) }}</span>
+            <span class="log-level-tag">[{{ entry.level.toUpperCase() }}]</span>
+            <span class="log-level-text">{{ entry.message }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </div>  <!-- /control tab -->
+
+  <!-- ─── Keywords Tab ─── -->
+  <div v-show="activeTab === 'keywords'">
+    <KeywordManager ref="kwManagerRef" :ws="ws" />
+  </div>
+
+  <!-- ─── Analytics Tab ─── -->
+  <div v-show="activeTab === 'analytics'">
+    <AnalyticsPanel ref="analyticsRef" :ws="ws" />
+  </div>
+
+  <!-- Sent flash animation -->
+  <div v-if="countBump" class="sent-flash">✓</div>
 </template>
