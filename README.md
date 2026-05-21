@@ -1,50 +1,92 @@
 # 🕊️ RedNoteDanmuBot
 
-小红书直播间弹幕机器人 — 通过 Web 控制面板自动发送弹幕。
+小红书直播间弹幕机器人 — Web 控制面板自动发送弹幕，支持 Chrome / Edge / Safari。
 
-## 功能
+## 功能一览
 
-- **🎮 三面板控制**：控制 / 关键词 / 数据，标签页切换
-- **🧠 智能消息引擎**：`前缀 + 关键词 + 随机符号` 组合，每次不同，防检测
-- **📝 关键词管理**：可增删改关键词，支持 iOS 开关启用/禁用
-- **📊 数据看板**：实时速率折线图 + 7 日柱状图 + 统计卡片
-- **💾 数据持久化**：SQLite 存储发送记录，重启不丢失
-- **🎯 频率控制**：可调发送间隔 + 随机抖动（防风控）
-- **📋 实时日志**：发送状态、计数、错误信息一目了然
-- **🔄 免扫码**：持久化浏览器会话，一次登录长期使用
+| 功能 | 说明 |
+|------|------|
+| 🎮 **三面板控制** | 控制 / 关键词 / 数据，标签页切换 |
+| 🧠 **双模式消息** | 关键词模式（前缀+词+符号）或全随机模式 |
+| 📝 **关键词管理** | 增删改关键词，iOS 开关启用/禁用 |
+| 📊 **数据看板** | 实时折线图 + 7 日柱状图 + 4 张统计卡 |
+| 💾 **自动持久化** | SQLite 存储发送记录，重启不丢 |
+| 🎯 **智能防检测** | 随机抖动 ±30%、每次消息不同、真人化 |
+| 🔄 **免重复扫码** | 浏览器会话持久化，一次登录长期使用 |
+| 🌐 **多浏览器** | Chrome / Edge / Safari 任意切换 |
 
 ## 快速开始
 
+### macOS
+
 ```bash
-# 1. 安装依赖
+# 1. 克隆项目
+git clone https://github.com/sekiwhat/RedNoteDanmuBot.git
+cd RedNoteDanmuBot
+
+# 2. 安装后端依赖
 npm install
 
-# 2. 安装前端依赖并构建
+# 3. 安装前端依赖并构建
 cd client && npm install && npx vite build && cd ..
 
-# 3. 启动服务
+# 4. 启动
 npm run server
 ```
 
 打开浏览器访问 **http://localhost:3000**
 
-## 使用说明
+### Windows
 
-1. **启动服务**，浏览器打开控制面板
-2. 在 Playwright 打开的 Chrome 窗口中登录小红书
-3. 复制直播间 URL → 点击「连接」
-4. 在 **关键词** 页面设置你想发的词句（如"中！"、"冲冲冲"）
-5. 回到 **控制** 页面，输入前缀（如"76"），点击「开始发送」
-6. 切换到 **数据** 页面查看实时发送统计
+```bash
+# 步骤同上，完全一致
+npm install
+cd client && npm install && npx vite build && cd ..
+npm run server
+```
 
-### 消息构成
+### macOS 特别说明
+
+| 浏览器 | 是否需要额外操作 |
+|--------|----------------|
+| **Chrome** | ✅ 即开即用（需已安装 Chrome） |
+| **Edge** | ✅ 即开即用 |
+| **Safari / WebKit** | 运行 `npx playwright install webkit`（首次） |
+
+> 💡 macOS 上 Safari 模式使用的是 Playwright 自带的 WebKit 引擎（非系统 Safari），表现与 Chrome 一致。
+
+## 使用指南
+
+### 第一步：连接直播间
 
 ```
-用户前缀  +  关键词(随机选)  +  随机符号/表情
-   "76"       "中！"           "~!@😊"
-   "76"       "冲冲冲"          "🔥✨"
+① 启动服务 → ② 打开 http://localhost:3000
+③ 选择浏览器 → ④ 输入直播间 URL → ⑤ 点击「连接」
+⑥ 在 Playwright 打开的浏览器窗口中扫码登录小红书
+```
 
-→ 每次发送结果都不同，防止被吞
+### 第二步：选择消息模式
+
+**关键词模式**（默认）：每次从你的词库中随机选一个，追加符号
+
+```
+"76" + "中！" + "~!@😊"  →  "76 中！~!@😊"
+"76" + "冲冲冲" + "🔥✨"  →  "76 冲冲冲🔥✨"
+```
+
+**全随机模式**：前缀 + 随机字母/符号/表情（可调长度和字符集）
+
+```
+"76" + "xK@!😊"  →  "76 xK@!😊"
+"76" + "Ab~#🌹"  →  "76 Ab~#🌹"
+```
+
+### 第三步：开始发送
+
+```
+设置前缀（如 "76"）→ 调整间隔（建议 2000ms）
+→ 点击「开始发送」→ 切到「数据」看实时统计
+→ 点击「停止」结束
 ```
 
 ## 配置
@@ -54,74 +96,66 @@ npm run server
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `port` | 3000 | 服务端口 |
-| `defaultInterval` | 2500 | 默认发送间隔 (ms) |
-| `minInterval` | 1500 | 最小发送间隔 (ms) |
-| `maxInterval` | 8000 | 最大发送间隔 (ms) |
-| `jitterRatio` | 0.3 | 间隔抖动比例 (±30%) |
-| `headless` | false | 是否无头浏览器模式 |
-| `userDataDir` | `.chromium-profile` | 浏览器用户数据目录 |
-
-## 开发
-
-```bash
-# 前端热更新开发
-cd client && npx vite
-
-# 运行全部测试
-npx --node-options="--experimental-vm-modules" jest
-
-# 构建前端
-cd client && npx vite build
-```
-
-## 项目结构
-
-```
-RedNoteDanmuBot/
-├── server/
-│   ├── index.js            # Express + WebSocket 服务
-│   ├── bot.js              # Playwright 弹幕发送核心
-│   ├── messageEngine.js    # 智能消息引擎
-│   ├── database.js         # SQLite 持久化
-│   ├── randomizer.js       # 随机字符串生成
-│   ├── config.js           # 默认配置
-│   └── __tests__/          # 13 个测试
-├── client/
-│   ├── src/
-│   │   ├── App.vue         # 主控制面板
-│   │   ├── main.js
-│   │   ├── style.css
-│   │   └── components/
-│   │       ├── KeywordManager.vue  # 关键词管理
-│   │       └── AnalyticsPanel.vue  # 数据看板
-│   ├── index.html
-│   └── vite.config.js
-├── data/                   # SQLite 数据库（自动创建）
-├── .chromium-profile/      # 浏览器会话缓存
-├── package.json
-└── README.md
-```
+| `browser` | `chrome` | 默认浏览器 |
+| `defaultInterval` | 2500 | 发送间隔 (ms) |
+| `minInterval` | 1500 | 最小间隔 |
+| `maxInterval` | 8000 | 最大间隔 |
+| `jitterRatio` | 0.3 | 抖动比例 (±30%) |
+| `headless` | false | 无头模式 |
+| `userDataDir` | `.chromium-profile` | 会话缓存目录 |
 
 ## 技术栈
 
 | 层 | 技术 |
 |----|------|
 | 后端 | Node.js + Express + WebSocket |
-| 浏览器自动化 | Playwright |
+| 浏览器 | Playwright (Chrome / Edge / WebKit) |
 | 前端 | Vue 3 + Chart.js + Vite |
 | 存储 | SQLite (better-sqlite3) |
 
-## 测试
+## 项目结构
 
-```bash
-npx --node-options="--experimental-vm-modules" jest
+```
+RedNoteDanmuBot/
+├── server/                      # 后端
+│   ├── index.js                 # Express + WebSocket
+│   ├── bot.js                   # Playwright 核心
+│   ├── messageEngine.js         # 智能消息引擎
+│   ├── database.js              # SQLite 持久化
+│   ├── randomizer.js            # 随机字符串
+│   ├── config.js                # 配置
+│   └── __tests__/               # 13 个测试
+├── client/                      # 前端
+│   └── src/
+│       ├── App.vue              # 主面板
+│       ├── components/
+│       │   ├── KeywordManager.vue   # 关键词管理
+│       │   └── AnalyticsPanel.vue   # 数据看板
+│       └── style.css
+├── data/                        # SQLite（自动创建）
+├── .chromium-profile/           # 浏览器会话（自动创建）
+└── package.json
 ```
 
-13 个测试覆盖：randomizer / database / messageEngine
+## 开发
 
-## 注意事项
+```bash
+# 前端热更新
+cd client && npx vite
 
-- 请合理使用，避免违反小红书社区规则
-- 发送频率建议 2-3 秒以上间隔
-- 首次使用需要在 Playwright 打开的浏览器中扫码登录
-- 登录态会保存在 `.chromium-profile/` 目录，下次免扫码
+# 运行测试
+npx --node-options="--experimental-vm-modules" jest
+
+# 构建前端
+cd client && npx vite build
+```
+
+测试覆盖：`randomizer` / `database` / `messageEngine`，共 13 个。
+
+## 注意
+
+- ⚠️ 请合理使用，遵守小红书社区规则
+- ⏱ 发送间隔建议 2000ms 以上，太快容易被风控
+- 🔑 首次使用需在 Playwright 打开的浏览器中扫码登录
+- 💾 登录态保存在 `.chromium-profile/`，下次免扫码
+- 🍎 macOS 用户首次使用 Safari 模式需先跑 `npx playwright install webkit`

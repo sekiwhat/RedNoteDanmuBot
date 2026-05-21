@@ -30,10 +30,8 @@ class DanmuBot {
         this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
         break;
       case 'safari':
-        this.context = await webkit.launchPersistentContext(config.userDataDir, {
-          ...launchOptions,
-          // Safari WebKit 使用 Playwright 自带的 WebKit 构建
-        });
+        // 使用 Playwright 自带的 WebKit 引擎（非系统 Safari）
+        this.context = await webkit.launchPersistentContext(config.userDataDir, launchOptions);
         break;
       case 'chromium':
         // Playwright 自带的 Chromium（不需要系统安装）
@@ -67,11 +65,24 @@ class DanmuBot {
     this.sentCount = 0;
 
     const interval = options.interval || config.defaultInterval;
-    const template = options.template;
+    const mode = options.mode || 'keyword';
+    const randomOptions = options.random || {};
 
     while (!this._stopRequested) {
       try {
-        const { fullMessage } = buildMessage(prefix);
+        let fullMessage;
+        if (mode === 'random') {
+          const randomStr = generate({
+            minLen: randomOptions.minLen || config.randomLengthMin,
+            maxLen: randomOptions.maxLen || config.randomLengthMax,
+            useLetters: randomOptions.useLetters !== false,
+            useSymbols: randomOptions.useSymbols !== false,
+            useEmojis: randomOptions.useEmojis !== false,
+          });
+          fullMessage = prefix + ' ' + randomStr;
+        } else {
+          fullMessage = buildMessage(prefix).fullMessage;
+        }
 
         await this._sendMessage(fullMessage);
         this.sentCount++;

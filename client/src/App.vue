@@ -8,6 +8,12 @@ const url = ref('');
 const browser = ref('chrome');
 const prefix = ref('76');
 const interval = ref(2500);
+const mode = ref('keyword');
+const randomMinLen = ref(3);
+const randomMaxLen = ref(6);
+const useLetters = ref(true);
+const useSymbols = ref(true);
+const useEmojis = ref(true);
 const activeTab = ref('control');
 const kwManagerRef = ref(null);
 const analyticsRef = ref(null);
@@ -98,7 +104,21 @@ function disconnect() {
 }
 function start() {
   errorMsg.value = '';
-  send({ type: 'start', prefix: prefix.value, options: { interval: interval.value } });
+  send({
+    type: 'start',
+    prefix: prefix.value,
+    options: {
+      interval: interval.value,
+      mode: mode.value,
+      random: {
+        minLen: randomMinLen.value,
+        maxLen: randomMaxLen.value,
+        useLetters: useLetters.value,
+        useSymbols: useSymbols.value,
+        useEmojis: useEmojis.value,
+      },
+    },
+  });
 }
 function stop() { send({ type: 'stop' }); }
 
@@ -194,12 +214,46 @@ function fmtTime(iso) {
             <div class="card-row">
               <span class="input-label">前缀</span>
               <input class="input-field" v-model="prefix" placeholder="76" style="max-width:100px;" />
-              <span class="input-hint">+ 词</span>
+              <span class="input-hint">{{ mode === 'keyword' ? '+ 词' : '+ 随机' }}</span>
             </div>
+
+            <!-- Mode Toggle -->
+            <div class="card-row" style="border-bottom:none;padding-bottom:0;">
+              <span class="input-label">模式</span>
+              <div class="segmented">
+                <button class="seg-btn" :class="{ active: mode === 'keyword' }" @click="mode = 'keyword'">关键词</button>
+                <button class="seg-btn" :class="{ active: mode === 'random' }" @click="mode = 'random'">全随机</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Random settings (shown only in random mode) -->
+        <div v-if="mode === 'random'" class="card">
+          <div class="card-header">🎲 随机设置</div>
+          <div class="card-body">
             <div class="card-row">
-              <span class="input-label">间隔</span>
-              <input class="input-field num" v-model.number="interval" type="number" min="1500" max="8000" step="100" />
-              <span class="input-hint">ms</span>
+              <span class="input-label">长度</span>
+              <input class="input-field num" v-model.number="randomMinLen" type="number" min="1" max="20" />
+              <span class="range-sep">–</span>
+              <input class="input-field num" v-model.number="randomMaxLen" type="number" min="1" max="20" />
+            </div>
+            <div class="card-row" style="border-bottom:none;">
+              <span class="input-label">字符</span>
+              <div style="display:flex;gap:14px;margin-left:auto;">
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:var(--text);">
+                  <input type="checkbox" v-model="useLetters" class="ios-switch" style="width:36px;height:22px;" />
+                  字母
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:var(--text);">
+                  <input type="checkbox" v-model="useSymbols" class="ios-switch" style="width:36px;height:22px;" />
+                  符号
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:var(--text);">
+                  <input type="checkbox" v-model="useEmojis" class="ios-switch" style="width:36px;height:22px;" />
+                  表情
+                </label>
+              </div>
             </div>
           </div>
         </div>

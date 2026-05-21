@@ -315,6 +315,38 @@ body {
   gap: var(--space-sm);
 }
 
+/* ─── Segmented Control ──────────────────────────────────────────── */
+.segmented {
+  display: flex;
+  border: 0.5px solid var(--separator);
+  border-radius: 7px;
+  overflow: hidden;
+  margin-left: auto;
+}
+.seg-btn {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.seg-btn + .seg-btn {
+  border-left: 0.5px solid var(--separator);
+}
+.seg-btn.active {
+  background: var(--accent);
+  color: white;
+}
+.seg-btn:hover:not(.active) {
+  background: var(--surface-hover);
+}
+
 /* ─── Browser Select ─────────────────────────────────────────────── */
 .browser-select {
   appearance: none;
