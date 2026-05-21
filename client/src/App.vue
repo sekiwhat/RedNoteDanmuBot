@@ -214,7 +214,7 @@ function fmtTime(iso) {
             <div class="card-row">
               <span class="input-label">前缀</span>
               <input class="input-field" v-model="prefix" placeholder="76" style="max-width:100px;" />
-              <span class="input-hint">{{ mode === 'keyword' ? '+ 词' : '+ 随机' }}</span>
+              <span class="input-hint">{{ mode === 'keyword' ? '+词' : '+随机' }}</span>
             </div>
 
             <!-- Mode Toggle -->

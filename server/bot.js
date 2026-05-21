@@ -79,7 +79,7 @@ class DanmuBot {
             useSymbols: randomOptions.useSymbols !== false,
             useEmojis: randomOptions.useEmojis !== false,
           });
-          fullMessage = prefix + ' ' + randomStr;
+          fullMessage = prefix + randomStr;
         } else {
           fullMessage = buildMessage(prefix).fullMessage;
         }

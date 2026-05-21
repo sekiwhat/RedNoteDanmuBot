@@ -8,7 +8,7 @@ export function buildMessage(prefix) {
   if (keywords.length === 0) {
     // Fallback: 没有启用关键词时用随机字符串
     const randomStr = generate({ minLen: 3, maxLen: 6 });
-    const fullMessage = prefix + ' ' + randomStr;
+    const fullMessage = prefix + randomStr;
     logSend(prefix, '(random)', fullMessage, 'success');
     return { fullMessage, keyword: '(random)' };
   }
@@ -26,7 +26,7 @@ export function buildMessage(prefix) {
   });
 
   // 4. 组装消息
-  const fullMessage = prefix + ' ' + keyword + symbols;
+  const fullMessage = prefix + keyword + symbols;
   logSend(prefix, keyword, fullMessage, 'success');
   return { fullMessage, keyword };
 }
