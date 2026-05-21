@@ -65,7 +65,7 @@ class DanmuBot {
     this.sentCount = 0;
 
     const interval = options.interval || config.defaultInterval;
-    const mode = options.mode || 'keyword';
+    const mode = options.mode || 'random';
     const randomOptions = options.random || {};
 
     while (!this._stopRequested) {
