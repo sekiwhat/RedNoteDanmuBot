@@ -7,7 +7,7 @@ import AnalyticsPanel from './components/AnalyticsPanel.vue';
 const url = ref('');
 const browser = ref('chrome');
 const prefix = ref('76');
-const interval = ref(2500);
+const interval = ref(3000);
 const mode = ref('random');
 const randomMinLen = ref(3);
 const randomMaxLen = ref(6);
@@ -214,13 +214,20 @@ function fmtTime(iso) {
             <div class="card-row">
               <span class="input-label">前缀</span>
               <input class="input-field" v-model="prefix" placeholder="76" style="max-width:100px;" />
-              <span class="input-hint">{{ mode === 'keyword' ? '+词' : '+随机' }}</span>
+              <span class="input-hint">{{ { keyword: '+词', random: '+随机', direct: '' }[mode] }}</span>
+            </div>
+
+            <div class="card-row">
+              <span class="input-label">间隔</span>
+              <input class="input-field num" v-model.number="interval" type="number" min="1500" max="10000" step="100" />
+              <span class="input-hint">ms</span>
             </div>
 
             <!-- Mode Toggle -->
             <div class="card-row" style="border-bottom:none;padding-bottom:0;">
               <span class="input-label">模式</span>
               <div class="segmented">
+                <button class="seg-btn" :class="{ active: mode === 'direct' }" @click="mode = 'direct'">直接</button>
                 <button class="seg-btn" :class="{ active: mode === 'keyword' }" @click="mode = 'keyword'">关键词</button>
                 <button class="seg-btn" :class="{ active: mode === 'random' }" @click="mode = 'random'">全随机</button>
               </div>

@@ -71,7 +71,9 @@ class DanmuBot {
     while (!this._stopRequested) {
       try {
         let fullMessage;
-        if (mode === 'random') {
+        if (mode === 'direct') {
+          fullMessage = prefix;
+        } else if (mode === 'random') {
           const randomStr = generate({
             minLen: randomOptions.minLen || config.randomLengthMin,
             maxLen: randomOptions.maxLen || config.randomLengthMax,

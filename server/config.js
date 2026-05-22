@@ -1,6 +1,6 @@
 export default {
   port: 3000,
-  defaultInterval: 2500,
+  defaultInterval: 3000,
   minInterval: 1500,
   maxInterval: 8000,
   jitterRatio: 0.3,
