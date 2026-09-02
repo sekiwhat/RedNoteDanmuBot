@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node *)",
+      "Bash(where.exe node *)",
+      "Bash(cmd.exe /c \"where node\")",
+      "Read(//c/Program Files/nodejs/**)",
+      "Bash(C:/Program Files/nodejs/node.exe *)"
+    ]
+  }
+}

@@ -22,6 +22,13 @@ class DanmuBot {
     const launchOptions = {
       headless: config.headless,
       viewport: { width: 1280, height: 720 },
+      ignoreDefaultArgs: ['--enable-automation', '--no-sandbox'],
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-infobars',
+      ],
     };
 
     switch (browserType) {
