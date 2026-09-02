@@ -1,10 +1,12 @@
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 import { generate, applyTemplate } from './randomizer.js';
+import { buildMessage } from './messageEngine.js';
 import config from './config.js';
 
 class DanmuBot {
   constructor() {
     this.browser = null;
+    this.context = null;
     this.page = null;
     this.running = false;
     this._stopRequested = false;
@@ -14,54 +16,45 @@ class DanmuBot {
     this.onCount = null;
   }
 
-  async connect(url) {
-    this.browser = await chromium.launch({ headless: config.headless });
-    const context = await this.browser.newContext({
+  async connect(url, browserType) {
+    browserType = browserType || config.browser;
+
+    const launchOptions = {
+      headless: config.headless,
       viewport: { width: 1280, height: 720 },
-    });
-    this.page = await context.newPage();
-    await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    };
 
-    // Try multiple selectors to find the input box
-    const inputSelectors = [
-      'input[placeholder*="说点什么"]',
-      'input[placeholder*="弹幕"]',
-      'input[placeholder*="评论"]',
-      'textarea[placeholder*="说点什么"]',
-      '[contenteditable="true"]',
-      '.input-area input',
-      '.chat-input input',
-    ];
-
-    let found = false;
-    for (const selector of inputSelectors) {
-      try {
-        await this.page.waitForSelector(selector, { timeout: 5000 });
-        this._log('info', `Connected — input found with selector: ${selector}`);
-        found = true;
-        return;
-      } catch {
-        // Try next selector
-      }
+    switch (browserType) {
+      case 'edge':
+        launchOptions.channel = 'msedge';
+        this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
+      case 'safari':
+        // 使用 Playwright 自带的 WebKit 引擎（非系统 Safari）
+        this.context = await webkit.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
+      case 'chromium':
+        // Playwright 自带的 Chromium（不需要系统安装）
+        this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
+      default:
+        // 'chrome' — 使用系统安装的 Chrome
+        launchOptions.channel = 'chrome';
+        this.context = await chromium.launchPersistentContext(config.userDataDir, launchOptions);
+        break;
     }
 
-    // Fallback to generic input or textarea
-    if (!found) {
-      try {
-        await this.page.waitForSelector('input', { timeout: 5000 });
-        this._log('info', 'Connected — input found with generic selector: input');
-      } catch {
-        await this.page.waitForSelector('textarea', { timeout: 5000 });
-        this._log('info', 'Connected — input found with generic selector: textarea');
-      }
-    }
+    const pages = this.context.pages();
+    this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
+    await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    this._log('info', `[${browserType}] 浏览器已打开，请在浏览器窗口中登录小红书`);
   }
 
   async disconnect() {
     await this.stop();
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+    if (this.context) {
+      await this.context.close();
+      this.context = null;
       this.page = null;
     }
   }
@@ -72,26 +65,35 @@ class DanmuBot {
     this.sentCount = 0;
 
     const interval = options.interval || config.defaultInterval;
-    const template = options.template;
+    const mode = options.mode || 'random';
+    const randomOptions = options.random || {};
 
     while (!this._stopRequested) {
       try {
-        const randomStr = generate(options.random || {});
-        let message;
-        if (template) {
-          message = applyTemplate(template, prefix, randomStr);
+        let fullMessage;
+        if (mode === 'direct') {
+          fullMessage = prefix;
+        } else if (mode === 'random') {
+          const randomStr = generate({
+            minLen: randomOptions.minLen || config.randomLengthMin,
+            maxLen: randomOptions.maxLen || config.randomLengthMax,
+            useLetters: randomOptions.useLetters !== false,
+            useSymbols: randomOptions.useSymbols !== false,
+            useEmojis: randomOptions.useEmojis !== false,
+          });
+          fullMessage = prefix + randomStr;
         } else {
-          message = prefix + ' ' + randomStr;
+          fullMessage = buildMessage(prefix).fullMessage;
         }
 
-        await this._sendMessage(message);
+        await this._sendMessage(fullMessage);
         this.sentCount++;
 
         if (this.onCount) {
           this.onCount(this.sentCount);
         }
 
-        this._log('info', `Message sent: "${message}"`);
+        this._log('info', `Message sent: "${fullMessage}"`);
       } catch (err) {
         if (this.onError) {
           this.onError(err);
@@ -142,7 +144,7 @@ class DanmuBot {
     }
 
     if (!inputEl) {
-      throw new Error('Cannot find input element on the page');
+      throw new Error('找不到输入框 — 请确认已在浏览器中登录小红书并进入直播间');
     }
 
     await inputEl.click();

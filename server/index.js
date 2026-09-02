@@ -75,7 +75,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'status', state: 'disconnected', sentCount: 0 }));
 
   // ── Handle incoming messages ──
-  ws.on('message', (data) => {
+  ws.on('message', async (data) => {
     let parsed;
     try {
       parsed = JSON.parse(data.toString());
@@ -92,7 +92,7 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({ type: 'error', message: 'Missing url in connect message' }));
             return;
           }
-          bot.connect(url)
+          bot.connect(url, parsed.browser)
             .then(() => {
               ws.send(JSON.stringify({ type: 'status', state: 'connected', sentCount: bot.sentCount }));
             })
@@ -132,6 +132,40 @@ wss.on('connection', (ws) => {
         case 'stop': {
           bot.stop();
           ws.send(JSON.stringify({ type: 'status', state: 'idle', sentCount: bot.sentCount }));
+          break;
+        }
+
+        case 'listKeywords': {
+          const { listKeywords } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'keywords', list: listKeywords() }));
+          break;
+        }
+
+        case 'addKeyword': {
+          const { addKeyword } = await import('./database.js');
+          if (!parsed.text || !parsed.text.trim()) {
+            ws.send(JSON.stringify({ type: 'error', message: '关键词不能为空' }));
+            return;
+          }
+          ws.send(JSON.stringify({ type: 'keywords', list: addKeyword(parsed.text) }));
+          break;
+        }
+
+        case 'removeKeyword': {
+          const { removeKeyword } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'keywords', list: removeKeyword(parsed.id) }));
+          break;
+        }
+
+        case 'toggleKeyword': {
+          const { toggleKeyword } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'keywords', list: toggleKeyword(parsed.id) }));
+          break;
+        }
+
+        case 'getStats': {
+          const { getStats } = await import('./database.js');
+          ws.send(JSON.stringify({ type: 'stats', ...getStats() }));
           break;
         }
 
